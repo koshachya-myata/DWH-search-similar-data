@@ -1,3 +1,7 @@
+# All in data folder. Data maybe added in end of model creation
+data/*
+notebooks/temporary_notebook.ipynb
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
