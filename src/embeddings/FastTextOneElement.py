@@ -1,7 +1,7 @@
 """Fasttext model learning on elements of rows in dataset."""
 from gensim.models.fasttext import FastText
 from torch.utils.data import DataLoader
-from src.data_process.data_classes import AllCsvDataSet
+from src.data_process.data_classes import AllCsvDataSet, DirectIterationDataset
 from gensim.models.callbacks import CallbackAny2Vec
 from datetime import datetime
 import os
@@ -29,7 +29,8 @@ class FastTextOneElement:
     """Fasttext model class. Learning on elements."""
     def __init__(self, data_dir: str) -> None:
         """data_dit -- directory with datasets."""
-        dataset = AllCsvDataSet(data_dir=data_dir, return_row=False)
+        # dataset = AllCsvDataSet(data_dir=data_dir, return_row=False)
+        dataset = DirectIterationDataset(data_dir=data_dir, return_row=False)
         print('Data len:', len(dataset))
         self.dataloader = DataLoader(dataset,
                                      batch_size=1,
@@ -55,13 +56,18 @@ class FastTextOneElement:
         print('Corpus total words:', self.model.corpus_total_words)
         print('Total words vectors len:', len(self.model.wv))
         print('Dataloader len:', len(self.dataloader))
-        self.model.train(
-            corpus_iterable=self.dataloader,
-            total_examples=len(self.dataloader),
-            epochs=epochs,
-            compute_loss=True,
-            callbacks=[LossLogger()]
-        )
+        try:
+            self.model.train(
+                corpus_iterable=self.dataloader,
+                total_examples=len(self.dataloader),
+                epochs=epochs,
+                compute_loss=True,
+                callbacks=[LossLogger()]
+            )
+        except KeyboardInterrupt:
+            print('Training interrupted. Saving model.')
+            self.save(save_dir_pth)
+
         if save_dir_pth:
             self.save(save_dir_pth)
 

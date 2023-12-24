@@ -12,4 +12,4 @@ if __name__ == '__main__':
     if process_arg == 'train_ft_one_elem':
         print('Train FastText on elements of data')
         model = FastTextOneElement(DATA_DIR)
-        model.train(epochs=3)
+        model.train(epochs=int(1e4))
