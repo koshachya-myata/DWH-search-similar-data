@@ -1,7 +1,7 @@
 """Fasttext model learning on elements of rows in dataset."""
 from gensim.models.fasttext import FastText
 from torch.utils.data import DataLoader
-from src.data_process.data_classes import AllCsvDataSet, DirectIterationDataset
+from src.data_process.data_classes import DirectIterationDataset, CellSentence
 from gensim.models.callbacks import CallbackAny2Vec
 from datetime import datetime
 import os
@@ -9,11 +9,16 @@ import os
 
 class LossLogger(CallbackAny2Vec):
     """Loss logger for 2vec models."""
+
     def __init__(self):
+        """Initizlize LossLogger."""
         self.epoch = 0
+        self.loss_previous_step = None
 
     def on_epoch_end(self, model):
+        """Logger for epoch end. Not work with FastText"""
         loss = model.get_latest_training_loss()
+        # fasttext will always return 0
         if self.epoch == 0:
             print('Loss after epoch {}: {}'.format(self.epoch, loss))
         else:
@@ -27,11 +32,14 @@ class LossLogger(CallbackAny2Vec):
 
 class FastTextOneElement:
     """Fasttext model class. Learning on elements."""
+
     def __init__(self, data_dir: str) -> None:
-        """data_dit -- directory with datasets."""
+        """data_dir -- directory with datasets."""
+        self.data_dir = data_dir
         # dataset = AllCsvDataSet(data_dir=data_dir, return_row=False)
         dataset = DirectIterationDataset(data_dir=data_dir, return_row=False)
-        print('Data len:', len(dataset))
+        print('Data len (number of cols):', len(dataset))
+
         self.dataloader = DataLoader(dataset,
                                      batch_size=1,
                                      shuffle=True)
@@ -48,10 +56,10 @@ class FastTextOneElement:
                               min_count=0,
                               epochs=200)
 
-    def train(self, epochs: int = 200, save_dir_pth: str = 'models/'):
+    def train(self, epochs: int = 150, save_dir_pth: str = 'models/'):
         """Train and save model."""
         print('Start build vocabulary')
-        self.model.build_vocab(self.dataloader)
+        self.model.build_vocab(CellSentence(data_dir=self.data_dir))
         print('Corpus count:', self.model.corpus_count)
         print('Corpus total words:', self.model.corpus_total_words)
         print('Total words vectors len:', len(self.model.wv))

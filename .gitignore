@@ -1,7 +1,8 @@
-# All in data folder. Data maybe added in end of model creation
 data/*
+test_data/*
 notebooks/temporary_notebook.ipynb
 models/*
+embeddings/*
 
 **/.DS_Store
 

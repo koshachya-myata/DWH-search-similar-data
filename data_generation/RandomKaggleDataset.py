@@ -15,7 +15,7 @@ class RandomKaggleDataset:
                  min_bytes=1024, max_bytes=3*1024**2):
         """Also init self.search_words."""
         self.search_words = ['security', 'users', 'traffic', 'packet',
-                             'economics', ]
+                             'economics', 'client']
         self._used_data = set()
         self.random_queris = random_queris
         self.table_per_query = table_per_query
@@ -95,7 +95,9 @@ class RandomKaggleDataset:
     def download_from_random_words(self):
         """Download datasets using fake.word self.random_queris times."""
         for _ in range(self.random_queris):
-            self.download_from_search_query(self.fake.word(nb=1))
+            q = self.fake.word()
+            print('Random query:', q)
+            self.download_from_search_query(q)
 
     def pipeline(self):
         """Download from self.search_words and from random queris."""

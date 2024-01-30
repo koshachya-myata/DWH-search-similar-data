@@ -8,7 +8,7 @@ import numpy as np
 
 
 def get_csv_len(csv_path: str):
-    """Number of rows in csv data."""
+    """Get number of data rows in csv file."""
     with open(csv_path) as f:
         reader = csv.reader(f)
         header = next(reader)  # delete header for counting
@@ -16,7 +16,7 @@ def get_csv_len(csv_path: str):
 
 
 def get_csv_row_on_ind(csv_path: str, ind: int):
-    """Get ind-th row in csv data"""
+    """Get ind-th row in csv data."""
     with open(csv_path) as f:
         reader = csv.reader(f)
         next(reader)  # delete header
@@ -26,7 +26,8 @@ def get_csv_row_on_ind(csv_path: str, ind: int):
 
 
 class DataColumnSentences(object):
-    """Conver data column as sentences."""
+    """Clasas for manage data column as sentences."""
+
     def __init__(self, datafile: str, column: str,
                  delimiter: str = ",", quotechar: str | None = '"',
                  lineterminator: str = "\r\n"
@@ -138,7 +139,7 @@ class DirectIterationDataset(Dataset):
 
     Для каждой таблицы создает свой ридер. И построчно, сверху вниз, считывает
     данные. В таком случае getitem работает за O(кол-во таблиц) (с учетом,
-    векторых операци, может и за O(1), но данные для обучения
+    векторых операций, может и за O(1), но данные для обучения
     не перемешиваются.
     """
     FileCsvReader = namedtuple('FileCsvReader', 'file, file_pth, reader')
@@ -149,41 +150,49 @@ class DirectIterationDataset(Dataset):
 
         self._readers: List[self.FileCsvReader] = []
         self._last_rows = []
-        self._acc_row_lens = [0]
+        self.accum_cols_count = [0]
         for address, dirs, files in os.walk(self.data_dir):
             for name in files:
                 file_pth = os.path.join(address, name)
                 if file_pth[-4:] == '.csv':
                     file = open(file_pth)
-                    reader = csv.reader(file)
-                    header = next(reader)
-                    self._acc_row_lens.append(self._acc_row_lens[-1] +
-                                              len(header))
+                    try:
+                        reader = csv.reader(file)
+                        header = next(reader)
+                    except UnicodeDecodeError:
+                        print(f'Bad symbol in {file_pth}.')
+                        continue
+                    self.accum_cols_count.append(self.accum_cols_count[-1] +
+                                                 len(header))
                     self._last_rows.append(header)
 
                     new_elem = self.FileCsvReader(file=file, reader=reader,
                                                   file_pth=file_pth)
                     self._readers.append(new_elem)
         self._readed = [
-            np.array([True] * (self._acc_row_lens[i] - self._acc_row_lens[i-1]))
-            for i in range(1, len(self._acc_row_lens))
+            np.array(
+                [True] * (
+                    self.accum_cols_count[i] - self.accum_cols_count[i-1]
+                    )
+            ) for i in range(1, len(self.accum_cols_count))
             ]
         self._iter_table_map = {}
         now_iter = 0
-        for i in range(1, len(self._acc_row_lens)):
-            for j in range(self._acc_row_lens[i] - self._acc_row_lens[i-1]):
+        for i in range(1, len(self.accum_cols_count)):
+            for j in range(self.accum_cols_count[i] -
+                           self.accum_cols_count[i-1]):
                 self._iter_table_map[now_iter+j] = i - 1
-            now_iter += self._acc_row_lens[i] - self._acc_row_lens[i-1]
-        self._acc_row_lens.pop(0)
+            now_iter += self.accum_cols_count[i] - self.accum_cols_count[i-1]
+        self.accum_cols_count.pop(0)
         self._len = sum([len(el) for el in self._readed])
 
     def __len__(self):
-        # if one iterate over dataset = iterate over all table once
+        # if one iterate over dataset = iterate over all columns once
         return self._len
 
     def __getitem__(self, idx):
         table_id = self._iter_table_map[idx]
-        col_ind = idx - self._acc_row_lens[table_id]
+        col_ind = idx - self.accum_cols_count[table_id]
         file, file_pth, reader = self._readers[table_id]
         if self._readed[table_id][col_ind] is True:
             if np.all(self._readed[table_id]):
@@ -199,4 +208,33 @@ class DirectIterationDataset(Dataset):
                     self._readed[table_id].fill(False)
         rt_elem = self._last_rows[table_id][col_ind]
         self._readed[table_id][col_ind] = True
-        return rt_elem
+        return rt_elem.split()
+
+
+class CellSentence(object):
+    """Iterate in format: one sentence = one cell;"""
+
+    def __init__(self, data_dir):
+        self.data_dir = data_dir
+
+    def __iter__(self):
+        """Iterate through the lines in the source."""
+        for address, dirs, files in os.walk(self.data_dir):
+            for name in files:
+                file_pth = os.path.join(address, name)
+                if file_pth[-4:] == '.csv':
+                    with open(file_pth) as f:
+                        reader = csv.reader(f)
+                        try:
+                            line = next(reader, None)  # delete header for counting
+                            line = next(reader, None)
+                        except UnicodeDecodeError:
+                            print(f'Bad symbol in {file_pth}.')
+                            continue
+                        while line is not None:
+                            for cell in line:
+                                yield cell.split()
+                            try:
+                                line = next(reader, None)
+                            except UnicodeDecodeError:
+                                print(f'Bad symbol in {file_pth}.')

@@ -11,16 +11,18 @@ def generate_data(
         ):
     """Generate artificial data and get random datasets."""
     fakegenerator_ru = FakeDataGenerator(locale='ru_RU',
-                                         fake_data_count=fake_data_count//2
+                                         fake_data_count=fake_data_count//2,
+                                         save_dir_path=save_dir_path
                                          )
     fakegenerator_ru.create_random_data(row_max=300)
 
     fakegenerator_us = FakeDataGenerator(locale='en_US',
-                                         fake_data_count=fake_data_count//2
+                                         fake_data_count=fake_data_count//2,
+                                         save_dir_path=save_dir_path
                                          )
     fakegenerator_us.create_random_data(row_max=300)
 
     rnd_kag_dat = RandomKaggleDataset(random_queris,
                                       table_per_query,
-                                      save_dir_path)
+                                      data_path=save_dir_path)
     rnd_kag_dat.pipeline()
